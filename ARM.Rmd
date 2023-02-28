@@ -1,0 +1,141 @@
+---
+title: "Association Rule Mining"
+author: "Om Sai"
+date: "2023-02-21"
+output: html_document
+---
+
+####################################################
+###
+### Association Rule Mining Examples
+### This example will use the Apriori Alg.
+### 
+### Dr. Gates 
+####################################################
+## To perform Association Rule Mining, transaction 
+## data is needed. 
+## MANY libraries will also be required... 
+## 
+## To perform association rule mining, you must have
+## transaction data AND you must create a datafile
+## that presents that data in whatever way your library
+## expects. I will use *basket* here.
+##
+## 
+
+## TO GET this code to work and to get arulesViz to work - 
+## The HOW TO Tutorial for this is above
+## you wil have to carefully and patiently do the following:
+
+## DO these installs once
+## install.packages("arules")
+## For arulesViz to work on R version 3.5.x, you will
+## need to first go through an installation of RTools. 
+## See HOW TO above.
+## Next - once the RTools exe has been downloaded and installed
+## per the instructions, then, do these install.packages here in RStudio:
+#install.packages("TSP")
+#install.packages("data.table")
+## NOTE: If you are asked if you want to INSTALL FROM SOURCE - click YES!
+#install.packages("arulesViz", dependencies = TRUE)
+## IMPORTANT ## arules ONLY grabs rules with ONE item on the right
+## install.packages("sp")
+## NOTE R V3.5.0 does not use the older
+## datasets packages
+## install.packages("datasets.load") - not used here
+## install.packages("ggplot2") - not used here
+
+## install.packages("dplyr", dependencies = TRUE)
+## install.packages("purrr", dependencies = TRUE)
+## install.packages("devtools", dependencies = TRUE)
+## install.packages("tidyr")
+library(viridis)
+library(arules)
+library(TSP)
+library(data.table)
+#library(ggplot2)
+#library(Matrix)
+#library(tcltk)
+library(dplyr)
+library(devtools)
+library(purrr)
+library(tidyr)
+## DO THIS ONCE
+## FIRST - you MUST register and log into github
+## install_github("mhahsler/arulesViz")
+## RE: https://github.com/mhahsler/arulesViz
+
+##############
+## IF YOUR CODE BREAKS - TRY THIS
+##
+## Error in length(obj) : Method length not implemented for class rules 
+## DO THIS: 
+## (1) detach("package:arulesViz", unload=TRUE)
+## (2) detach("package:arules", unload=TRUE)
+## (3) library(arules)
+## (4) library(arulesViz)
+###################################################################
+
+## To see if you have tcltk run this on the console...
+#capabilities()["tcltk"]
+#install.packages("arulesViz")
+library(arulesViz)
+
+
+
+
+
+###################################
+## Example 1: Kumar's Beer Example
+##
+## Dataset: https://drive.google.com/file/d/1BvU3iXtrwxfjBsRShaDgI-Ldh7Y3XSEn/view?usp=sharing
+## KumarGroceriesAS_Transactions
+##
+## ## Dataset:
+## HealthyBasket
+## https://drive.google.com/file/d/1qaWSTwjrj7tNB43zLss9KC_ecJKp6W4g/view?usp=sharing
+###################################################
+
+Popularity <- read.transactions("transactions.csv",
+                           rm.duplicates = FALSE, 
+                           format = "basket",  ##if you use "single" also use cols=c(1,2)
+                           sep=",",  ## csv file
+                           cols=NULL) ## The dataset HAS row numbers
+inspect(Popularity)
+
+##### Use apriori to get the RULES
+PrulesK = arules::apriori(Popularity, parameter = list(support=.35, 
+                                                 confidence=.35, minlen=2))
+inspect(PrulesK)
+
+## Plot of which items are most frequent
+itemFrequencyPlot(Popularity, topN=20, type="absolute")
+#{chocloate}                  => {quinoa}    0.35    1.00       0.35     1.000000
+## Sort rules by a measure such as conf, sup, or lift
+SortedRulesK <- sort(PrulesK, by="confidence", decreasing=TRUE)
+inspect(SortedRulesK[1:10])
+(summary(SortedRulesK))
+
+## Selecting or targeting specific rules  RHS
+ImageRules <- apriori(data=Popularity,parameter = list(supp=.001, conf=.01, minlen=2),
+                     appearance = list(default="lhs", rhs="Very Few Images"),
+                     control=list(verbose=FALSE))
+ImageRules <- sort(ImageRules, decreasing=TRUE, by="confidence")
+inspect(ImageRules)
+
+## Selecting rules with LHS specified
+SubjectivityRules <- apriori(data=Popularity,parameter = list(supp=.001, conf=.01, minlen=2),
+                       appearance = list(default="rhs", lhs="Moderate Subjectivity"),
+                       control=list(verbose=FALSE))
+SubjectivityRules <- sort(SubjectivityRules, decreasing=TRUE, by="support")
+inspect(SubjectivityRules)
+
+## Visualize
+## tcltk
+
+subrulesK <- head(sort(SortedRulesK, by="lift"),10)
+
+plot(subrulesK)
+
+#plot(subrulesK, method="graph", engine="interactive")
+plot(subrulesK, method="graph", engine="htmlwidget")
