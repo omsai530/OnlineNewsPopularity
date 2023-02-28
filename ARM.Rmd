@@ -1,0 +1,80 @@
+---
+title: "Association Rule Mining"
+author: "Om Sai"
+date: "2023-02-21"
+output: html_document
+---
+
+library(viridis)
+library(arules)
+library(TSP)
+library(data.table)
+#library(ggplot2)
+#library(Matrix)
+#library(tcltk)
+library(dplyr)
+library(devtools)
+library(purrr)
+library(tidyr)
+
+
+##############
+## IF YOUR CODE BREAKS - TRY THIS
+##
+## Error in length(obj) : Method length not implemented for class rules 
+## DO THIS: 
+## (1) detach("package:arulesViz", unload=TRUE)
+## (2) detach("package:arules", unload=TRUE)
+## (3) library(arules)
+## (4) library(arulesViz)
+###################################################################
+
+## To see if you have tcltk run this on the console...
+#capabilities()["tcltk"]
+#install.packages("arulesViz")
+library(arulesViz)
+
+
+Popularity <- read.transactions("transactions.csv",
+                           rm.duplicates = FALSE, 
+                           format = "basket",  ##if you use "single" also use cols=c(1,2)
+                           sep=",",  ## csv file
+                           cols=NULL) ## The dataset HAS row numbers
+inspect(Popularity)
+
+##### Use apriori to get the RULES
+PrulesK = arules::apriori(Popularity, parameter = list(support=.35, 
+                                                 confidence=.35, minlen=2))
+inspect(PrulesK)
+
+## Plot of which items are most frequent
+itemFrequencyPlot(Popularity, topN=20, type="absolute")
+
+## Sort rules by a measure such as conf, sup, or lift
+SortedRulesK <- sort(PrulesK, by="confidence", decreasing=TRUE)
+inspect(SortedRulesK[1:10])
+(summary(SortedRulesK))
+
+## Selecting or targeting specific rules  RHS
+ImageRules <- apriori(data=Popularity,parameter = list(supp=.001, conf=.01, minlen=2),
+                     appearance = list(default="lhs", rhs="Very Few Images"),
+                     control=list(verbose=FALSE))
+ImageRules <- sort(ImageRules, decreasing=TRUE, by="confidence")
+inspect(ImageRules)
+
+## Selecting rules with LHS specified
+SubjectivityRules <- apriori(data=Popularity,parameter = list(supp=.001, conf=.01, minlen=2),
+                       appearance = list(default="rhs", lhs="Moderate Subjectivity"),
+                       control=list(verbose=FALSE))
+SubjectivityRules <- sort(SubjectivityRules, decreasing=TRUE, by="support")
+inspect(SubjectivityRules)
+
+## Visualize
+## tcltk
+
+subrulesK <- head(sort(SortedRulesK, by="lift"),10)
+
+plot(subrulesK)
+
+#plot(subrulesK, method="graph", engine="interactive")
+plot(subrulesK, method="graph", engine="htmlwidget")
