@@ -1,0 +1,221 @@
+---
+title: "Clustering"
+author: "Om Sai"
+date: "2023-02-21"
+output: html_document
+---
+
+
+# cat("\014")
+#########################################
+##
+##  Comprehensive Clustering Tutorial
+##  
+##  Corpus - Text - Small
+##  Corpus - Text - Novels
+##  
+##  Record - 3D - Small
+##
+##  k means, hclust,  and Vis
+##
+##  Elbow, Silhouette
+#####################################################
+
+
+library(stats)  ## for dist
+
+## There are many clustering libraries
+#install.packages("NbClust")
+library(NbClust)
+library(cluster)
+library(mclust)
+
+library(amap)  ## for using Kmeans (notice the cap K)
+
+library(factoextra) ## for cluster vis, silhouette, etc.
+library(purrr)
+
+
+#library(stylo)  ## for dist.cosine
+
+library(philentropy)  ## for distance() which offers 46 metrics
+library(SnowballC)
+library(caTools)
+library(dplyr)
+library(textstem)
+library(stringr)
+library(wordcloud)
+library(tm) ## to read in corpus (text data)
+
+Record_3D_DF_all<-read.csv("hclust.csv")
+Record_3D_DF_all<- Record_3D_DF_all %>% sample_n(100)
+Record_3D_DF<-Record_3D_DF_all  ## make a copy
+## Look, clean, prep
+head(Record_3D_DF)
+str(Record_3D_DF)
+## Save the label
+#(Label_3D <- Record_3D_DF$Label)
+
+
+### Look at the pairwise distances between the vectors (rows, points in 3D)
+(Dist1<- dist(Record_3D_DF, method = "minkowski", p=1)) ##Manhattan
+(Dist2<- dist(Record_3D_DF, method = "minkowski", p=2)) #Euclidean
+(DistE<- dist(Record_3D_DF, method = "euclidean")) #same as p = 2
+
+## test to see that rescale does what you think it should --
+##v=c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+##rescale(v)
+
+## Create a normalized version of Record_3D_DF
+(Record_3D_DF_Norm <- as.data.frame(apply(Record_3D_DF[,1:5 ], 2, ##2 for col
+                                 function(x) (x - min(x))/(max(x)-min(x)))))
+
+
+## Look at scaled distances
+(Dist_norm<- dist(Record_3D_DF_Norm, method = "minkowski", p=2)) #Euclidean
+
+
+kmeans_3D_1<-NbClust::NbClust(Record_3D_DF_Norm, 
+                             min.nc=2, max.nc=10, method="kmeans")
+## How many clusters is best....let's SEE.........
+table(kmeans_3D_1$Best.n[1,])
+
+barplot(table(kmeans_3D_1$Best.n[1,]), 
+        xlab="Numer of Clusters", ylab="",
+        main="Number of Clusters")
+
+
+##############################
+
+## Does Silhouette agree?
+
+##############################
+
+fviz_nbclust(Record_3D_DF_Norm, method = "silhouette", 
+                      FUN = hcut, k.max = 10)
+
+
+##############################
+
+## Elbow Method (WSS - within sum sq), With Manhatten Distance.
+
+############################# Elbow Methods ###################
+
+fviz_nbclust(
+  as.matrix(Record_3D_DF_Norm), 
+  kmeans, 
+  k.max = 10,
+  method = "wss",
+  diss = get_dist(as.matrix(Record_3D_DF_Norm), method = "manhattan")
+)
+
+
+## From the Elbow Method and Silhoutte Score, we can say that 3 clustors perform best clustoring.
+
+##########################
+## k means..............
+######################################
+
+kmeans_3D_1_Result <- kmeans(Record_3D_DF, 3, nstart=25) 
+
+## I could have used the normalized data - which is better to use
+## But - by using the non-norm data, the results make more visual
+## sense - which also matters.
+
+# Print the results
+print(kmeans_3D_1_Result)
+
+kmeans_3D_1_Result$centers  
+
+aggregate(Record_3D_DF, 
+          by=list(cluster=kmeans_3D_1_Result$cluster), mean)
+
+## Compare to the labels
+table(Record_3D_DF$Avg_Credit_Limit, kmeans_3D_1_Result$cluster)
+## This is a confusion matrix with 100% prediction (very rare :)
+
+summary(kmeans_3D_1_Result)
+
+## Place results in a tbale with the original data
+cbind(Record_3D_DF, cluster = kmeans_3D_1_Result$cluster)
+
+
+## See each cluster
+kmeans_3D_1_Result$cluster
+
+## This is the size (the number of points in) each cluster
+# Cluster size
+kmeans_3D_1_Result$size
+
+
+## Visualize the clusters
+fviz_cluster(kmeans_3D_1_Result, Record_3D_DF, main="Euclidean")
+
+
+My_Kmeans_3D_2<-Kmeans(Record_3D_DF_Norm, centers=2 ,method = "spearman")
+fviz_cluster(My_Kmeans_3D_2, Record_3D_DF, main="Spearman")
+## k= 3
+My_Kmeans_3D_3<-Kmeans(Record_3D_DF_Norm, centers=3 ,method = "spearman")
+fviz_cluster(My_Kmeans_3D_3, Record_3D_DF, main="Spearman")
+## k = 2 with Euclidean
+My_Kmeans_3D_E<-Kmeans(Record_3D_DF_Norm, centers=2 ,method = "euclidean")
+fviz_cluster(My_Kmeans_3D_E, Record_3D_DF, main="Euclidean")
+## k = 3 with Euclidean
+My_Kmeans_3D_E3<-Kmeans(Record_3D_DF_Norm, centers=3 ,method = "euclidean")
+fviz_cluster(My_Kmeans_3D_E3, Record_3D_DF, main="Euclidean")
+
+## Heat maps...
+## Recall that we have Dist2..
+##(Dist2<- dist(Record_3D_DF, method = "minkowski", p=2)) #Euclidean
+fviz_dist(Dist2, gradient = list(low = "#00AFBB", 
+                            mid = "white", high = "#FC4E07"))+
+                            ggtitle("Euclidean Heatmap")
+
+## Compare to clusters...
+cbind(Record_3D_DF_all, cluster = kmeans_3D_1_Result$cluster)
+
+
+#######################################################
+## 
+##          Hierarchical CLustering
+## 
+##
+#######################################################
+
+## Example:
+(Dist_norm_M2<- dist(Record_3D_DF_Norm, method = "minkowski", p=2)) #Euclidean
+## Now run hclust...you may use many methods - Ward, Ward.D2, complete, etc..
+## see above
+(HClust_Ward_Euc_N_3D <- hclust(Dist_norm_M2, method = "average" ))
+plot(HClust_Ward_Euc_N_3D, cex=0.9, hang=-1, main = "Minkowski p=2 (Euclidean)")
+rect.hclust(HClust_Ward_Euc_N_3D, k=4)
+
+## Using Man with Ward.D2..............................
+dist_C <- stats::dist(Record_3D_DF_Norm, method="manhattan")
+HClust_Ward_CosSim_N_3D <- hclust(dist_C, method="ward.D2")
+plot(HClust_Ward_CosSim_N_3D, cex=.7, hang=-30,main = "Manhattan")
+rect.hclust(HClust_Ward_CosSim_N_3D, k=2)
+
+similarity_matrix <- tcrossprod(scale(Record_3D_DF_Norm, center = TRUE, scale = TRUE))
+
+# perform hierarchical clustering using cosine similarity
+hclust_results <- hclust(as.dist(1 - similarity_matrix), method = "ward.D2")
+
+# plot the dendrogram
+plot(hclust_results, main = "Hierarchical Clustering using Cosine Similarity")
+##################################################
+##
+##     TESTING  - Which methods to use??
+##
+##    Method with stronger clustering structures??
+######################################################
+#library(purrr)
+#install.packages("cluster")
+#library(cluster)
+
+methods <- c( "average", "single", "complete", "ward")
+names(methods) <- c( "average", "single", "complete", "ward")
+
+####### ---->  function to compute coefficient-------
+MethodMeasures <- function(x) {
+  cluster::agnes(Record_3D_DF_Norm, method = x)$ac
