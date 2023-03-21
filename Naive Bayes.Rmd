@@ -1,0 +1,70 @@
+library(naivebayes)
+library(dplyr)
+library(datasets)
+library(caTools)
+library(e1071)
+
+
+
+setwd("~/Work/Machine Learning/Exam1")
+
+StudentDF <- read.csv('Exam1_DT_NB.csv', stringsAsFactors=TRUE) # all non-numeric columns should be factors
+
+
+
+
+(Size <- (as.integer(nrow(StudentDF)/4)))  ## Test will be 1/4 of the data
+(SAMPLE <- sample(nrow(StudentDF), Size))
+
+(DF_Test_Student<-StudentDF[SAMPLE, ])
+(DF_Train_Student<-StudentDF[-SAMPLE, ])
+
+
+str(DF_Test_Student$shares_cat)  
+str(DF_Train_Student$shares_cat)  
+table(DF_Test_Student$shares_cat)
+
+
+##################################### REMOVE AND SAVE LABELS...
+
+## Test...--------------------------------
+## Copy the Labels
+(DF_Test_Student_Labels <- DF_Test_Student$shares_cat)
+## Remove the labels
+DF_Test_Student_NL<-DF_Test_Student[ , -which(names(DF_Test_Student) %in% c("shares_cat"))]
+(DF_Test_Student_NL[1:5, 1:5])
+## Check size
+(ncol(DF_Test_Student_NL))
+#(DF_Test_Student_NL)
+
+
+## Train...--------------------------------
+## Copy the Labels
+(DF_Train_Student_Labels <- DF_Train_Student$shares_cat)
+## Remove the labels
+DF_Train_Student_NL<-DF_Train_Student[ , -which(names(DF_Train_Student) %in% c("shares_cat"))]
+(DF_Train_Student_NL[1:5, 1:5])
+## Check size
+(ncol(DF_Train_Student_NL))
+#(DF_Train_Student_NL)
+
+
+## DF_Test_Student_NL  ## Testset
+## DF_Train_Student_NL  ## Training set
+## Label name is "shares_cat"
+## Test labels:
+## DF_Test_Student_Labels
+## DF_Train_Student_Labels
+
+
+(NB_Class<-naiveBayes(DF_Train_Student_NL, DF_Train_Student_Labels, laplace = 1))
+
+NB_e1071_Pred_Student <- predict(NB_Class, DF_Test_Student_NL)
+
+NB_conf<-table(NB_e1071_Pred_Student,DF_Test_Student_Labels)
+NB_conf
+
+(NB_e1071_Pred_Student)
+
+accuracy_test<-sum(diag(NB_conf))/sum(NB_conf)
+accuracy_test
